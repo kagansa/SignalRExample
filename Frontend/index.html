@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="node_modules/@microsoft/signalr/dist/browser/signalr.min.js"></script>
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script>
+      $(document).ready(() => {
+        var connection = new signalR.HubConnectionBuilder()
+          .configureLogging(signalR.LogLevel.Information)
+          .withUrl("https://localhost:7008/myhub")
+          .withAutomaticReconnect()
+          .build();
+
+        function start() {
+            connection.start().then(() => { }).catch(error => setTimeout(() => start(), 2000))
+        }
+
+        connection.onreconnecting(error => {
+            $("div").css("background-color", "#6286a0");
+            $("div").css("color", "#white");
+            $("div").html("Bağlanılıyor")
+         });
+         connection.onreconnected(connecitonid => {
+            $("div").css("background-color", "#32a838");
+            $("div").css("color", "#white");
+            $("div").html("Bağlandı")
+         });
+         connection.onclose(connecitonid => {
+            $("div").css("background-color", "red");
+            $("div").css("color", "#white");
+            $("div").html("Bağlanılamadı")
+         });
+
+        connection
+          .start()
+          .then(() => console.log("Bağlantı başarıyla gerçekleştirildi."))
+          .catch((error) =>
+            console.log(
+              "Bağlantı sağlanırken beklenmeyen bir hatayla karşılaşıldı."
+            )
+          );
+        console.log(connection.connectionState);
+
+        $("button").click(() => {
+          let message = $("#txtMessage").val();
+          connection
+            .invoke("SendMessageAsync", message)
+            .catch((error) =>
+              console.log("Mesaj gönderilirken hata alınmıştır.")
+            );
+        });
+
+        connection.on("receiveMessage", (message) => {
+          $("#messages").append(`${message}<br>`);
+        });
+
+        connection.on("userJoined", connectionId => {
+            $("div").html(`${connectionId} katıldı.`);
+            setTimeout(() => {
+               $("div").show(2000, () => {
+                  $("div").hide(2000);
+               })
+            }, 2000);
+         });
+
+         connection.on("userLeaved", connectionId => {
+            $("div").html(`${connectionId} ayrıldı.`);
+            $("div").show(2000, () => {
+               setTimeout(() => {
+                  $("div").show(2000, () => {
+                     $("div").hide(2000);
+                  })
+               }, 2000);
+            })
+         });
+
+         connection.on("clients", clients => {
+   let lis = "";
+   for (const client in clients) {
+      lis += `<li>${clients[client]}</li>`;
+   }
+   $("#clients").html(lis);
+});
+
+
+
+      });
+    </script>
+  </head>
+  <style>
+    div {
+       background-color: #6286a0;
+       border: 15px solid rgba(255, 255, 255, .5);
+       border-radius: 115px;
+       width: 80px;
+       height: 80px;
+       line-height: 80px;
+       font-size: 12px;
+       color: white;
+       font-family: Arial, Helvetica, sans-serif;
+       font-weight: bold;
+       text-shadow: #2d4251 5px 5px 5px;
+    }
+ </style>
+  <body>
+    
+    <input type="text" id="txtMessage" /> <button>Gönder</button>
+    <ul id="messages"></ul>
+    <div style="color:darkorange;background-color: dimgrey; width: 250px; display: none;">
+    </div>
+    <ul id="clients">
+    </ul>
+  </body>
+</html>
